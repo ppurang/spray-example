@@ -93,6 +93,7 @@ trait CoffeeService extends HttpService with LiftJsonSupport {
       }
     }
 }
+    import spray.httpx.marshalling._
 
 trait CoffeePaymentService extends HttpService with LiftJsonSupport {
   self: PersistenceCoffee =>
@@ -101,7 +102,7 @@ trait CoffeePaymentService extends HttpService with LiftJsonSupport {
 
   val paymentRoute =
     pathPrefix("payment/order") {
-      respondWithMediaType(`application/vnd.payment+json`) {
+      respondWithMediaType(`application/vnd.coffee+json`) {
         path(IntNumber) {
           id =>
             get {
@@ -113,8 +114,8 @@ trait CoffeePaymentService extends HttpService with LiftJsonSupport {
                 payment => complete {
                   val porder = retrieve(id)
                   if(porder.status != "paid" && Option(payment.amount) == porder.cost) { //todo really?
-                    update(id, porder.copy(status = "paid"))
-                    (OK, porder)
+                    update(id, porder.copy(status = Option("paid")))
+                    (OK, retrieve(id))
                   }  else {
                     (Conflict, s"order.status: $porder.status, order.cost: $porder.status, payment.amount: $payment.amount")
                   }

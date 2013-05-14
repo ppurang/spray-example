@@ -28,7 +28,7 @@ object Served extends Status {
 case class Next(rel: String, uri: String, `type`: String)
 
 //todo Order should ideally be better typed          and that status should be something other than a string
-case class Order(drink: String, cost: Option[Double] = None, next: Option[Next] = None, status : String = "pending")
+case class Order(drink: String, cost: Option[Double] = None, next: Option[Next] = None, status : Option[String] = Option("pending"))
 
 case class Payment(creditCardNo: String, expires: String, name: String, amount: Double)
 
@@ -40,8 +40,10 @@ object Order {
   val `application/vnd.coffee+json`: CustomMediaType = CustomMediaType("application/vnd.coffee+json")
   MediaTypes.register(`application/vnd.coffee+json`)
 
+/*
   val `application/vnd.payment+json`: CustomMediaType = CustomMediaType("application/vnd.payment+json")
   MediaTypes.register(`application/vnd.payment+json`)
+*/
 
 
 
@@ -60,12 +62,12 @@ object Order {
     // case EmptyEntity => ...
   }
 
-  implicit val PaymentMarshaller = Marshaller.of[Payment](`application/vnd.payment+json`) {
+  implicit val PaymentMarshaller = Marshaller.of[Payment](`application/vnd.coffee+json`) {
     (value, contentType, ctx) =>
       ctx.marshalTo(HttpBody(contentType, write(value)))
   }
 
-  implicit val PaymentUnMarshaller = Unmarshaller[Payment](`application/vnd.payment+json`) {
+  implicit val PaymentUnMarshaller = Unmarshaller[Payment](`application/vnd.coffee+json`) {
     case HttpBody(contentType, buffer) =>
       // unmarshal from the string format used in the marshaller example
       parse(buffer.asString).extract[Payment]

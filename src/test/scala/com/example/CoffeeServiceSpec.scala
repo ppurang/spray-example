@@ -29,7 +29,7 @@ class CoffeeServiceSpec extends Specification with Specs2RouteTest with CoffeeSe
       Get("/order/1") ~> orderRoute ~> check {
         val order = entityAs[Order]
         order.drink === "latte"
-        order.status === "pending"
+        order.status === Some("pending")
       }
     }
 
@@ -42,13 +42,13 @@ class CoffeeServiceSpec extends Specification with Specs2RouteTest with CoffeeSe
       HttpRequest(
         PUT,
         "/payment/order/1",
-        HttpHeaders.`Content-Type`(`application/vnd.payment+json`) :: Nil,
+        HttpHeaders.`Content-Type`(`application/vnd.coffee+json`) :: Nil,
         marshal(Payment("xxxx-yyyy-zzzz-aaaa", "01/17", "Jane Doe", 100.0)).fold(t => EmptyEntity, x => x)
       ) ~> paymentRoute ~> check {
         status === OK
         val order = entityAs[Order]
         order.drink === "latte"
-        order.status === "paid"
+        order.status === Option("paid")
       }
 
     }
