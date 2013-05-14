@@ -1,0 +1,14 @@
+curl http://localhost:8080
+curl -H"accept: application/json" http://localhost:8080
+curl -XOPTIONS http://localhost:8080/order
+
+curl -XPOST http://localhost:8080/order -d '{"drink":"latte"}'
+curl -XPOST -H"content-type: application/vnd.coffee+json" http://localhost:8080/order -d '{"drink":"latte"}'
+
+curl -XOPTIONS http://localhost:8080/order/1
+curl -XHEAD http://localhost:8080/order/1
+curl http://localhost:8080/order/1
+
+curl -XOPTIONS  http://localhost:8080/payment/order/1
+curl -XPUT -H"content-type: application/vnd.coffee+json" http://localhost:8080/payment/order/1 -d '{"name":"jane doe","card":"xxxx","expires":"12/12","amount":100.0}'
+curl -XPUT -H"content-type: application/vnd.coffee+json" http://localhost:8080/payment/order/1 -d '{"name":"jane doe","card":"xxxx","expires":"12/12","amount":100.0}'
