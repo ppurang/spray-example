@@ -12,10 +12,11 @@ import com.example.domain.Order._
 import spray.httpx.LiftJsonSupport
 import net.liftweb.json.Formats
 import shapeless.HNil
+import spray.routing.directives.MethodDirectives
 
 // we don't implement our route structure directly in the service actor because
 // we want to be able to test it independently, without having to spin up an actor
-class CoffeeServiceActor extends Actor with CoffeeService with HashMapPersistenceCoffee with VeryPriceyCoffee {
+class CoffeeServiceActor extends Actor with CoffeeService with CoffeePaymentService with HashMapPersistenceCoffee with VeryPriceyCoffee {
 
   // the HttpService trait defines only one abstract member, which
   // connects the services environment to the enclosing actor or test
@@ -24,7 +25,7 @@ class CoffeeServiceActor extends Actor with CoffeeService with HashMapPersistenc
   // this actor only runs our route, but you could add
   // other things here, like request stream processing
   // or timeout handling
-  def receive = runRoute(orderRoute)
+  def receive = runRoute(orderRoute ~ paymentRoute)
 }
 
 trait HashMapPersistenceCoffee extends PersistenceCoffee {
@@ -44,7 +45,7 @@ trait HashMapPersistenceCoffee extends PersistenceCoffee {
     map += (counter -> porder)
   }
 
-  def retrieve(id: Int) = map(id)
+  def retrieve(id: Int) = map.get(id)
 }
 
 trait PersistenceCoffee {
@@ -52,7 +53,7 @@ trait PersistenceCoffee {
 
   def update(counter: Int, porder: Order): Unit
 
-  def retrieve(id: Int): Order
+  def retrieve(id: Int): Option[Order]
 }
 
 trait PriceCoffee {
@@ -93,7 +94,8 @@ trait CoffeeService extends HttpService with LiftJsonSupport {
       }
     }
 }
-    import spray.httpx.marshalling._
+
+import spray.httpx.marshalling._
 
 trait CoffeePaymentService extends HttpService with LiftJsonSupport {
   self: PersistenceCoffee =>
@@ -102,27 +104,36 @@ trait CoffeePaymentService extends HttpService with LiftJsonSupport {
 
   val paymentRoute =
     pathPrefix("payment/order") {
-      respondWithMediaType(`application/vnd.coffee+json`) {
-        path(IntNumber) {
-          id =>
-            get {
-              complete {
-                retrieve(id)
-              }
-            } ~ put {
-              entity(as[Payment]) {
-                payment => complete {
-                  val porder = retrieve(id)
-                  if(porder.status != "paid" && Option(payment.amount) == porder.cost) { //todo really?
-                    update(id, porder.copy(status = Option("paid")))
-                    (OK, retrieve(id))
-                  }  else {
-                    (Conflict, s"order.status: $porder.status, order.cost: $porder.status, payment.amount: $payment.amount")
-                  }
+
+      path(IntNumber) {
+        id => respondWithMediaType(`text/plain`) {
+          MethodDirectives.method(HttpMethods.OPTIONS) {
+            complete {
+              "GET, PUT"
+            }
+          }
+        } ~ respondWithMediaType(`application/vnd.coffee+json`) {
+          get {
+            complete {
+              retrieve(id)
+            }
+          } ~ put {
+            entity(as[Payment]) {
+              payment => complete {
+                val oporder = retrieve(id)
+                oporder.map {
+                  porder =>
+                    if (porder.status != "paid" && Option(payment.amount) == porder.cost) {
+                      //todo really?
+                      update(id, porder.copy(status = Option("paid")))
+                      (OK, retrieve(id))
+                    } else {
+                      (Conflict, s"order.status: $porder.status, order.cost: $porder.status, payment.amount: $payment.amount")
+                    }
                 }
               }
             }
-
+          }
         }
       }
     }
