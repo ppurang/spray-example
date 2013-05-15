@@ -31,6 +31,14 @@ class CoffeeServiceActor extends Actor with Entry with CoffeeService with Coffee
   def receive = runRoute(entry ~ orderRoute ~ paymentRoute)
 }
 
+trait PersistenceCoffee {
+  def persist(order: Order): (Int, Order)
+
+  def update(counter: Int, porder: Order): Unit
+
+  def retrieve(id: Int): Option[Order]
+}
+
 trait HashMapPersistenceCoffee extends PersistenceCoffee {
   private var map = collection.mutable.Map[Int, Order]()
   private var counter = 0
@@ -48,14 +56,6 @@ trait HashMapPersistenceCoffee extends PersistenceCoffee {
   }
 
   def retrieve(id: Int) = map.get(id)
-}
-
-trait PersistenceCoffee {
-  def persist(order: Order): (Int, Order)
-
-  def update(counter: Int, porder: Order): Unit
-
-  def retrieve(id: Int): Option[Order]
 }
 
 trait PriceCoffee {

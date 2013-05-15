@@ -14,6 +14,8 @@ Checkout the curl.txt for some curl interaction with the http services.
 
         > test
 
+    Don't worry too much if the tests fail .. :) try again! this is a known problem right now and is most probably due the way the tests are written or the version of spray used!
+
 3. Start the application:
 
         > re-start
