@@ -6,12 +6,10 @@ import spray.http._
 import MediaTypes._
 import spray.http.HttpHeaders.Location
 import spray.http.StatusCodes._
-import play.api.libs.json.Json
 import com.example.domain._
 import com.example.domain.Order._
 import spray.httpx.LiftJsonSupport
 import net.liftweb.json.Formats
-import shapeless.HNil
 import spray.routing.directives.{CompletionMagnet, MethodDirectives}
 import HttpMethods._
 import spray.httpx.marshalling._
@@ -69,12 +67,16 @@ trait VeryPriceyCoffee extends PriceCoffee {
 }
 
 object Directives {
-  def options(method: HttpMethod, methods: HttpMethod*) = respondWithMediaType(`text/plain`) {
-    MethodDirectives.method(HttpMethods.OPTIONS) {
+  def options(method: HttpMethod, methods: HttpMethod*): Route = respondWithMediaType(`text/plain`) {
+    options {
       complete {
         (method +: methods).mkString(",")
       }
     }
+  }
+
+  private def options: StandardRoute => Route = sr => MethodDirectives.method(HttpMethods.OPTIONS) {
+    sr
   }
 
   def someOrNotFound[A: Marshaller](s: Option[A]): CompletionMagnet = {
@@ -86,7 +88,7 @@ trait Entry extends HttpService {
   val entry = path("") {
     get {
       complete {
-        Link("order", "http://localhost:8080/order", "application/vnd.coffee+json")
+        Link("order", "http://localhost:8080/order", "*/*,plain/text,application/json")
       }
     }
   }

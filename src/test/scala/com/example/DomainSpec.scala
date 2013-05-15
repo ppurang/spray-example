@@ -12,7 +12,9 @@ object DomainSpec extends Specification {
     "allow desrializing an order" in {
       //println(Json.toJson(Order("latte")))
       //println("""{"drink":"latte"}""")
+
       parse("""{"drink":"latte"}""").extract[Order] === Order("latte", status = None)
+
       //Json.toJson("""{"drink":"latte"}""").as[Order] === Order("latte")
       //Json.toJson(Json.toJson(Order("latte"))).as[Order] === Order("latte")     //WTH? //todo WARUM?
     }

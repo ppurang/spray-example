@@ -3,8 +3,6 @@ package com.example.domain
 import play.api.libs.functional.syntax._
 import play.api.libs.json._
 import spray.http._
-import spray.http.MediaTypes.CustomMediaType
-import net.liftweb.json.{Serialization, DefaultFormats}
 import spray.httpx.marshalling.Marshaller
 import net.liftweb.json.Serialization._
 import spray.httpx.unmarshalling.Unmarshaller
@@ -92,7 +90,7 @@ object Order {
     // case EmptyEntity => ...
   }
 
-  implicit val nextFmt = Json.format[Next]
-  implicit val orderFmt = Json.format[Order]
+  //implicit val nextFmt = Json.format[Next]
+  //implicit val orderFmt = Json.format[Order]
 }
 
