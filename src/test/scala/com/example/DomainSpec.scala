@@ -8,8 +8,8 @@ import net.liftweb.json._
 
 
 object DomainSpec extends Specification {
-  "Domian" should {
-    "allow desrializing an order" in {
+  "Domain" should {
+    "allow de-serializing an order" in {
       //println(Json.toJson(Order("latte")))
       //println("""{"drink":"latte"}""")
 
