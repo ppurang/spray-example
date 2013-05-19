@@ -1,15 +1,17 @@
 package com.example
 
-import spray.can.server.SprayCanHttpServerApp
-import akka.actor.Props
+import akka.actor._
+import akka.io.IO
+import spray.can.Http
 
 
-object Boot extends App with SprayCanHttpServerApp {
+object Boot extends App {
 
-  // create and start our service actor
-  val service = system.actorOf(Props[CoffeeServiceActor], "coffee-service")
+  implicit val system = ActorSystem()
 
-  // create a new HttpServer using our handler tell it where to bind to
-  newHttpServer(service) ! Bind(interface = "localhost", port = 8080)
+  // the handler actor replies to incoming HttpRequests
+  val handler = system.actorOf(Props[CoffeeServiceActor], "coffee-service")
 
+
+  IO(Http) ! Http.Bind(handler, "localhost", 8080, 1000)
 }

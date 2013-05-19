@@ -8,8 +8,10 @@ import StatusCodes._
 import domain._
 import Order._
 
-
 class CoffeeServiceSpec extends Specification with Specs2RouteTest with CoffeeService with CoffeePaymentService with VeryPriceyCoffee with HashMapPersistenceCoffee {
+
+  sequential
+
   def actorRefFactory = system
 
   "As a customer" should {
@@ -39,17 +41,28 @@ class CoffeeServiceSpec extends Specification with Specs2RouteTest with CoffeeSe
         val order = entityAs[Order]
         order.cost === Option(100.0)
       }
-      HttpRequest(
+
+      Put("/payment/order/1", Option(Payment("xxxx-yyyy-zzzz-aaaa", "01/17", "Jane Doe", 100.0))) ~> paymentRoute ~> check {
+              status === OK
+              val order = entityAs[Order]
+              order.drink === "latte"
+              order.status === Option("paid")
+            }
+
+
+
+/*
+     HttpRequest(
         PUT,
         "/payment/order/1",
-        HttpHeaders.`Content-Type`(`application/vnd.coffee+json`) :: Nil,
-        marshal(Payment("xxxx-yyyy-zzzz-aaaa", "01/17", "Jane Doe", 100.0)).fold(t => EmptyEntity, x => x)
+        HttpEntity(`application/vnd.payment+json`, Payment("xxxx-yyyy-zzzz-aaaa", "01/17", "Jane Doe", 100.0))
       ) ~> paymentRoute ~> check {
         status === OK
         val order = entityAs[Order]
         order.drink === "latte"
         order.status === Option("paid")
       }
+*/
 
     }
   }

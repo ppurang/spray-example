@@ -44,25 +44,17 @@ object Order {
   val `application/vnd.coffee+json`: CustomMediaType = CustomMediaType("application/vnd.coffee+json")
   MediaTypes.register(`application/vnd.coffee+json`)
 
-  /*
     val `application/vnd.payment+json`: CustomMediaType = CustomMediaType("application/vnd.payment+json")
     MediaTypes.register(`application/vnd.payment+json`)
-  */
 
   implicit val LinkMarshaller = Marshaller.of[Link](`text/plain`, `application/json`) {
-    (value, contentType, ctx) => contentType match {
-      case x if x.value.startsWith("application/json")   => {
-        ctx.marshalTo(HttpBody(contentType, write(value)))
-      }
-      case _ => {
-        ctx.marshalTo(HttpBody(contentType, value.toString))
-      }
-    }
-  }
+       case (value, ct@ ContentType(`application/json`, _), ctx) => ctx.marshalTo(HttpEntity(ct, write(value)))
+       case (value, contentType, ctx) => ctx.marshalTo(HttpEntity(contentType, value.toString))
+     }
 
   implicit val OrderMarshaller = Marshaller.of[Order](`application/vnd.coffee+json`) {
     (value, contentType, ctx) =>
-      ctx.marshalTo(HttpBody(contentType, write(value)))
+      ctx.marshalTo(HttpEntity(contentType, write(value)))
   }
 
   implicit val OrderUnMarshaller = Unmarshaller[Order](`application/vnd.coffee+json`) {
@@ -75,12 +67,12 @@ object Order {
     // case EmptyEntity => ...
   }
 
-  implicit val PaymentMarshaller = Marshaller.of[Payment](`application/vnd.coffee+json`) {
+  implicit val PaymentMarshaller = Marshaller.of[Payment](`application/vnd.payment+json`) {
     (value, contentType, ctx) =>
-      ctx.marshalTo(HttpBody(contentType, write(value)))
+      ctx.marshalTo(HttpEntity(contentType, write(value)))
   }
 
-  implicit val PaymentUnMarshaller = Unmarshaller[Payment](`application/vnd.coffee+json`) {
+  implicit val PaymentUnMarshaller = Unmarshaller[Payment](`application/vnd.payment+json`) {
     case HttpBody(contentType, buffer) =>
       // unmarshal from the string format used in the marshaller example
       parse(buffer.asString).extract[Payment]

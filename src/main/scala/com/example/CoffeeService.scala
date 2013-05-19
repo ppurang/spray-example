@@ -10,12 +10,15 @@ import com.example.domain._
 import com.example.domain.Order._
 import spray.httpx.LiftJsonSupport
 import net.liftweb.json.Formats
-import spray.routing.directives.{CompletionMagnet, MethodDirectives}
+import spray.routing.directives.{CacheSpecMagnet, CompletionMagnet, MethodDirectives}
 import HttpMethods._
 import spray.httpx.marshalling._
 import Directives._
 import directives.RespondWithDirectives._
 import directives.RouteDirectives._
+import MethodDirectives._
+import directives.CachingDirectives._
+import spray.routing.PathMatchers.IntNumber
 
 // we don't implement our route structure directly in the service actor because
 // we want to be able to test it independently, without having to spin up an actor
@@ -67,17 +70,23 @@ trait VeryPriceyCoffee extends PriceCoffee {
 }
 
 object Directives {
-  def options(method: HttpMethod, methods: HttpMethod*): Route = respondWithMediaType(`text/plain`) {
-    options {
-      complete {
-        (method +: methods).mkString(",")
-      }
-    }
+
+  case class Allow(method: HttpMethod, methods: HttpMethod*) extends HttpHeader {
+    def name = "Allow"
+
+    def lowercaseName = "allow"
+
+    def value = (method +: methods).mkString(",")
   }
 
-  private def options: StandardRoute => Route = sr => MethodDirectives.method(HttpMethods.OPTIONS) {
-    sr
-  }
+  def allowed(method: HttpMethod, methods: HttpMethod*): Route =
+    options {
+      val header = Allow(method, methods: _*)
+      respondWithHeaders(header)
+      complete {
+        "Methods allowed: " + header.value
+      }
+    }
 
   def someOrNotFound[A: Marshaller](s: Option[A]): CompletionMagnet = {
     s.fold[CompletionMagnet](NotFound)(a => a)
@@ -86,11 +95,15 @@ object Directives {
 
 trait Entry extends HttpService {
   val entry = path("") {
+//    alwaysCache(CacheSpecMagnet()) {
+    allowed(GET) ~
     get {
-      complete {
-        Link("order", "http://localhost:8080/order", "*/*,plain/text,application/json")
+        complete {
+          Link("order", "http://localhost:8080/order", "*/*,plain/text,application/json")
+        }
       }
-    }
+
+//    }
   }
 }
 
@@ -103,24 +116,30 @@ trait CoffeeService extends HttpService with LiftJsonSupport {
   val orderRoute =
     pathPrefix("order") {
       path("") {
-        options(POST) ~
-          respondWithMediaType(`application/vnd.coffee+json`) {
-            post {
-              entity(as[Order]) {
-                order => complete {
-                  val (counter, persistedOrder) = persist(price(order))
-                  (Created, Location(s"http://localhost:8080/order/$counter") :: Nil, persistedOrder)
-                }
+          allowed(POST) ~
+          post {
+            entity(as[Order]) {
+              order => complete {
+                val (counter, persistedOrder) = persist(price(order))
+                (Created, Location(s"http://localhost:8080/order/$counter") :: Nil, persistedOrder)
               }
             }
           }
       } ~ path(IntNumber) {
-        id => options(GET) ~
-          respondWithMediaType(`application/vnd.coffee+json`) {
-            get {
-              complete {
-                someOrNotFound(retrieve(id))
-              }
+        id => allowed(GET) ~
+/*
+        //this doesn't work: "can't render nothing"
+        rejectEmptyResponse{
+          get {
+            complete {
+              retrieve(id)
+            }
+          }
+        }
+*/
+          get {
+            complete {
+              someOrNotFound(retrieve(id))
             }
           }
       }
@@ -133,32 +152,30 @@ trait CoffeePaymentService extends HttpService with LiftJsonSupport {
   override implicit def liftJsonFormats: Formats = Order.format
 
   val paymentRoute =
-    pathPrefix("payment/order") {
-      path(IntNumber) {
-        id => options(GET, PUT) ~
-          respondWithMediaType(`application/vnd.coffee+json`) {
-            get {
-              complete {
-                someOrNotFound(retrieve(id))
-              }
-            } ~ put {
-              entity(as[Payment]) {
-                payment => complete {
-                  val oporder = retrieve(id)
-                  oporder.fold[CompletionMagnet](NotFound) {
-                    porder =>
-                      if (porder.status != Option("paid") && Option(payment.amount) == porder.cost) {
-                        //todo really?
-                        update(id, porder.copy(status = Option("paid")))
-                        (OK, retrieve(id))
-                      } else {
-                        (Conflict, s"order.status: ${porder.status}, order.cost: ${porder.cost}, payment.amount: ${payment.amount}")
-                      }
-                  }
-                }
-              }
-            }
-          }
-      }
-    }
+   pathPrefix("payment"/"order") {
+     path(IntNumber) {
+         id => allowed(GET, PUT) ~
+           get {
+             complete {
+               someOrNotFound(retrieve(id))
+             }
+           } ~ put {
+           entity(as[Payment]) {
+             payment => complete {
+               val oporder = retrieve(id)
+               oporder.fold[CompletionMagnet](NotFound) {
+                 porder =>
+                   if (porder.status != Option("paid") && Option(payment.amount) == porder.cost) {
+                     //todo really?
+                     update(id, porder.copy(status = Option("paid")))
+                     (OK, retrieve(id))
+                   } else {
+                     (Conflict, s"order.status: ${porder.status}, order.cost: ${porder.cost}, payment.amount: ${payment.amount}")
+                   }
+               }
+             }
+           }
+         }
+       }
+   }
 }
