@@ -43,11 +43,11 @@ class CoffeeServiceSpec extends Specification with Specs2RouteTest with CoffeeSe
       }
 
       Put("/payment/order/1", Option(Payment("xxxx-yyyy-zzzz-aaaa", "01/17", "Jane Doe", 100.0))) ~> paymentRoute ~> check {
-              status === OK
-              val order = entityAs[Order]
-              order.drink === "latte"
-              order.status === Option("paid")
-            }
+        status === OK
+        val order = entityAs[Order]
+        order.drink === "latte"
+        order.status === Option("paid")
+      }
 
 
 

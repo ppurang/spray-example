@@ -77,14 +77,17 @@ object Directives {
     def lowercaseName = "allow"
 
     def value = (method +: methods).mkString(",")
+
+    def render[R <: Rendering](r: R): r.type =  r ~~ name ~~ ':' ~~ ' ' ~~ value
   }
 
   def allowed(method: HttpMethod, methods: HttpMethod*): Route =
     options {
       val header = Allow(method, methods: _*)
-      respondWithHeaders(header)
-      complete {
-        "Methods allowed: " + header.value
+      respondWithSingletonHeader(header) {
+        complete {
+          "Methods allowed: " + header.value
+        }
       }
     }
 
@@ -167,8 +170,9 @@ trait CoffeePaymentService extends HttpService with LiftJsonSupport {
                  porder =>
                    if (porder.status != Option("paid") && Option(payment.amount) == porder.cost) {
                      //todo really?
-                     update(id, porder.copy(status = Option("paid")))
-                     (OK, retrieve(id))
+                     val n = porder.copy(status = Option("paid"))
+                     update(id, n)
+                     (OK, n)
                    } else {
                      (Conflict, s"order.status: ${porder.status}, order.cost: ${porder.cost}, payment.amount: ${payment.amount}")
                    }
@@ -178,4 +182,5 @@ trait CoffeePaymentService extends HttpService with LiftJsonSupport {
          }
        }
    }
+
 }

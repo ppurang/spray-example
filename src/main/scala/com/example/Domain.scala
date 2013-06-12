@@ -41,10 +41,10 @@ object Order {
 
   implicit val format = DefaultFormats
 
-  val `application/vnd.coffee+json`: CustomMediaType = CustomMediaType("application/vnd.coffee+json")
+  val `application/vnd.coffee+json` = MediaType.custom("application/vnd.coffee+json")
   MediaTypes.register(`application/vnd.coffee+json`)
 
-    val `application/vnd.payment+json`: CustomMediaType = CustomMediaType("application/vnd.payment+json")
+    val `application/vnd.payment+json` = MediaType.custom("application/vnd.payment+json")
     MediaTypes.register(`application/vnd.payment+json`)
 
   implicit val LinkMarshaller = Marshaller.of[Link](`text/plain`, `application/json`) {
@@ -52,12 +52,12 @@ object Order {
        case (value, contentType, ctx) => ctx.marshalTo(HttpEntity(contentType, value.toString))
      }
 
-  implicit val OrderMarshaller = Marshaller.of[Order](`application/vnd.coffee+json`) {
+  implicit val OrderMarshaller = Marshaller.of[Order](`application/vnd.coffee+json`, `application/vnd.payment+json`) {
     (value, contentType, ctx) =>
       ctx.marshalTo(HttpEntity(contentType, write(value)))
   }
 
-  implicit val OrderUnMarshaller = Unmarshaller[Order](`application/vnd.coffee+json`) {
+  implicit val OrderUnMarshaller = Unmarshaller[Order](`application/vnd.coffee+json`, `application/vnd.payment+json`) {
     case HttpBody(contentType, buffer) =>
       // unmarshal from the string format used in the marshaller example
       parse(buffer.asString).extract[Order]
