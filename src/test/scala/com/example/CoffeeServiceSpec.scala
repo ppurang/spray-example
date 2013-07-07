@@ -8,7 +8,7 @@ import StatusCodes._
 import domain._
 import Order._
 
-class CoffeePersistenceServiceSpec extends Specification
+class CoffeeServiceSpec extends Specification
                                       with Specs2RouteTest
                                       with CoffeeService
                                       with CoffeePaymentService
