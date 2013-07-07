@@ -30,7 +30,8 @@ case class Link(rel: String, uri: String, `type`: String)  {
 case class Next(rel: String, uri: String, `type`: String)
 
 //todo Order should ideally be better typed          and that status should be something other than a string
-case class Order(drink: String,
+case class Order(id: Option[Int] = None,
+                 drink: String,
                  cost: Option[Double] = None,
                  next: Option[Next] = None,
                  status: Option[String] = Option("pending"))
@@ -84,5 +85,10 @@ object Order {
 
   //implicit val nextFmt = Json.format[Next]
   //implicit val orderFmt = Json.format[Order]
+}
+
+object Messages {
+  object GetHttpConfig
+  case class HttpConfig(protocol: String, host: String, port: Int)
 }
 

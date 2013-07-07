@@ -20,6 +20,7 @@ import MethodDirectives._
 import directives.CachingDirectives._
 import spray.routing.PathMatchers.IntNumber
 import com.typesafe.config.{ConfigFactory, Config}
+import com.example.domain.Messages.{HttpConfig, GetHttpConfig}
 
 // we don't implement our route structure directly in the service actor because
 // we want to be able to test it independently, without having to spin up an actor
@@ -27,7 +28,7 @@ class CoffeePersistenceServiceActor extends Actor
                                        with Entry
                                        with CoffeeService
                                        with CoffeePaymentService
-                                       with HashMapCoffeePersistence
+                                       with SlickH2CoffeePersistence
                                        with VeryPriceyCoffee
                                        with ConfigLinkBuilder
                                        with DefultConfigProvider {
@@ -39,7 +40,11 @@ class CoffeePersistenceServiceActor extends Actor
   // this actor only runs our route, but you could add
   // other things here, like request stream processing
   // or timeout handling
-  def receive = runRoute(entry ~ orderRoute ~ paymentRoute)
+  def receive = runRoute(entry ~ orderRoute ~ paymentRoute) orElse {
+    case GetHttpConfig =>
+      sender ! HttpConfig(
+        config getString "http.server.protocol", config getString "http.server.host", config getInt "http.server.port")
+  }
 }
 
 trait PriceCoffee {
@@ -177,8 +182,8 @@ trait CoffeePaymentService extends HttpService with LiftJsonSupport {
                  porder =>
                    if (porder.status != Option("paid") && Option(payment.amount) == porder.cost) {
                      //todo really?
-                     val n = porder.copy(status = Option("paid"))
-                     update(id, n)
+                     val n = porder.copy(status = Option("paid"), next = None)
+                     update(n)
                      (OK, n)
                    } else {
                      (Conflict, s"order.status: ${porder.status}, order.cost: ${porder.cost}, payment.amount: ${payment.amount}")
