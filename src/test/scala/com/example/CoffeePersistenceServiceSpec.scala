@@ -8,7 +8,14 @@ import StatusCodes._
 import domain._
 import Order._
 
-class CoffeeServiceSpec extends Specification with Specs2RouteTest with CoffeeService with CoffeePaymentService with VeryPriceyCoffee with HashMapPersistenceCoffee {
+class CoffeePersistenceServiceSpec extends Specification
+                                      with Specs2RouteTest
+                                      with CoffeeService
+                                      with CoffeePaymentService
+                                      with VeryPriceyCoffee
+                                      with ConfigLinkBuilder
+                                      with DefultConfigProvider
+                                      with HashMapCoffeePersistence {
 
   sequential
 

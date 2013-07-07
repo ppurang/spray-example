@@ -10,8 +10,8 @@ object Boot extends App {
   implicit val system = ActorSystem()
 
   // the handler actor replies to incoming HttpRequests
-  val handler = system.actorOf(Props[CoffeeServiceActor], "coffee-service")
+  val handler = system.actorOf(Props[CoffeePersistenceServiceActor], "coffee-service")
 
-
+  // TODO: get from config
   IO(Http) ! Http.Bind(handler, "localhost", 8080, 1000)
 }
