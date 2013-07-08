@@ -86,3 +86,8 @@ object Order {
   //implicit val orderFmt = Json.format[Order]
 }
 
+object Messages {
+  object GetHttpConfig
+  case class HttpConfig(protocol: String, host: String, port: Int)
+}
+

@@ -8,7 +8,14 @@ import StatusCodes._
 import domain._
 import Order._
 
-class CoffeeServiceSpec extends Specification with Specs2RouteTest with CoffeeService with CoffeePaymentService with VeryPriceyCoffee with HashMapPersistenceCoffee {
+class CoffeeServiceSpec extends Specification
+                                      with Specs2RouteTest
+                                      with CoffeeService
+                                      with CoffeePaymentService
+                                      with VeryPriceyCoffee
+                                      with ConfigLinkBuilder
+                                      with DefultConfigProvider
+                                      with HashMapCoffeePersistence {
 
   sequential
 
@@ -17,14 +24,14 @@ class CoffeeServiceSpec extends Specification with Specs2RouteTest with CoffeeSe
   "As a customer" should {
 
     "I want to order a coffee so that Coffeebucks can prepare my drink" in {
-      Post("/order", Option(Order("latte"))) ~> orderRoute ~> check {
+      Post("/order", Option(Order(drink = "latte"))) ~> orderRoute ~> check {
         val order = entityAs[Order]
         order.cost === Option(100.0)
       }
     }
 
     "I want to see the status of the order" in {
-      Post("/order", Option(Order("latte"))) ~> orderRoute ~> check {
+      Post("/order", Option(Order(drink = "latte"))) ~> orderRoute ~> check {
         val order = entityAs[Order]
         order.cost === Option(100.0)
       }
@@ -37,7 +44,7 @@ class CoffeeServiceSpec extends Specification with Specs2RouteTest with CoffeeSe
 
     import spray.httpx.marshalling._
     "I want to pay for the hot cuppa before it turns cold" in {
-      Post("/order", Option(Order("latte"))) ~> orderRoute ~> check {
+      Post("/order", Option(Order(drink = "latte"))) ~> orderRoute ~> check {
         val order = entityAs[Order]
         order.cost === Option(100.0)
       }

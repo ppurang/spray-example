@@ -20,10 +20,12 @@ libraryDependencies ++= Seq(
   "io.spray"            %   "spray-caching" % "1.2-M8",
   "com.typesafe.akka" %%  "akka-actor" % "2.2.0-RC1",
   "com.typesafe.akka" %%  "akka-slf4j" % "2.2.0-RC1",
-  "ch.qos.logback"% "logback-classic" % "1.0.12" % "runtime",
-  "play"        %% "play-json" % "2.2-SNAPSHOT",
+  "ch.qos.logback"% "logback-classic" % "1.0.13",
+  "play" %% "play-json" % "2.2-SNAPSHOT",
   "net.liftweb" %% "lift-json" % "2.5-RC5",
-  "org.specs2"          %%  "specs2"        % "1.14" % "test"
+  "com.typesafe.slick" %% "slick" % "1.0.1",
+  "com.h2database" % "h2" % "1.3.166",
+  "org.specs2" %%  "specs2" % "1.14" % "test"
 )
 
 seq(Revolver.settings: _*)
