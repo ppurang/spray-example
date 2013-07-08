@@ -6,7 +6,7 @@ import scala.slick.jdbc.meta.MTable
 trait CoffeePersistence {
   def persist(order: Order, paymentLinkFn: Int => String): (Int, Order)
 
-  def update(order: Order): Unit
+  def update(id: Int, order: Order): Unit
 
   def retrieve(id: Int): Option[Order]
 }
@@ -17,14 +17,14 @@ trait HashMapCoffeePersistence extends CoffeePersistence {
 
   def persist(order: Order, paymentLinkFn: Int => String) = {
     counter = counter + 1
-    val porder = order.copy(id = Some(counter), next = Option(Next("payment", paymentLinkFn(counter), "application/vnd.coffee+json")))
+    val porder = order.copy(next = Option(Next("payment", paymentLinkFn(counter), "application/vnd.coffee+json")))
     map += (counter -> porder)
     (counter, porder)
   }
 
-  def update(order: Order) {
-    map -= order.id getOrElse (throw new IllegalArgumentException("You can't update order without ID"))
-    map += (order.id.get -> order)
+  def update(id: Int, order: Order) {
+    map -= id
+    map += (id -> order)
   }
 
   def retrieve(id: Int) = map.get(id)
@@ -40,21 +40,20 @@ trait SlickH2CoffeePersistence extends CoffeePersistence {
     driver = config getString "persistence.db.driver")
 
   def persist(order: Order, paymentLinkFn: (Int) => String) = db.withSession { implicit s =>
-    val id = Orders returning Orders.id insert order
-    val orderToUpdate = order.copy(id = Some(id), next = Option(Next("payment", paymentLinkFn(id), "application/vnd.coffee+json")))
+    val id = Orders returning Orders.id insert (None -> order)
+    val orderToUpdate = order.copy(next = Option(Next("payment", paymentLinkFn(id), "application/vnd.coffee+json")))
 
-    update(orderToUpdate)
+    update(id, orderToUpdate)
 
-    (id, orderToUpdate)
+    id -> orderToUpdate
   }
 
-  def update(order: Order) = db withSession { implicit s: Session =>
-    ordersByIdQuery(order.id getOrElse (throw new IllegalArgumentException("You can't update order without ID")))
-      .update(order)
+  def update(id: Int, order: Order) = db withSession { implicit s: Session =>
+    ordersByIdQuery(id).update(Some(id) -> order)
   }
 
   def retrieve(id: Int) = db withSession { implicit s =>
-    ordersByIdQuery(id).firstOption()
+    ordersByIdQuery(id).firstOption().map(_._2)
   }
 
   private def ordersByIdQuery(id: Int) = for {
@@ -80,7 +79,7 @@ trait SlickH2CoffeePersistence extends CoffeePersistence {
     }
   }
 
-  private object Orders extends Table[Order]("order") {
+  private object Orders extends Table[(Option[Int], Order)]("order") {
     def id = column[Int]("order_id", O.PrimaryKey, O.AutoInc)
     def drink = column[String]("drink")
     def cost = column[Option[Double]]("cost")
@@ -90,11 +89,12 @@ trait SlickH2CoffeePersistence extends CoffeePersistence {
     def nextUri = column[Option[String]]("next_uri")
     def nextType = column[Option[String]]("next_type")
 
-    // OH, I like tuples, but not to this extent :)
-    // TODO: find better way to map (maybe extract `next` to it's own table)
-    def * = id.? ~ drink ~ cost ~ status ~ nextRel ~ nextUri ~ nextType <>
-      (r => Order(r._1, r._2, r._3, r._5.map(x => Next(r._5.get, r._6.get, r._7.get)), r._4),
-        o => Some((o.id, o.drink, o.cost, o.status, o.next.map(_.rel), o.next.map(_.uri), o.next.map(_.`type`))))
+    def * = id.? ~ drink ~ cost ~ status ~ nextRel ~ nextUri ~ nextType <> (
+      _ match {case (id, drink, cost, status, nextRel, nextUri, nextType) =>
+        (id, Order(drink, cost, nextRel.map(x => Next(nextRel.get, nextUri.get, nextType.get)), status))},
+      {case (id, o) =>
+        Some((id, o.drink, o.cost, o.status, o.next.map(_.rel), o.next.map(_.uri), o.next.map(_.`type`)))}
+    )
   }
 
   initDb()

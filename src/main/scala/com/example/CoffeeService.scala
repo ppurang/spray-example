@@ -183,7 +183,7 @@ trait CoffeePaymentService extends HttpService with LiftJsonSupport {
                    if (porder.status != Option("paid") && Option(payment.amount) == porder.cost) {
                      //todo really?
                      val n = porder.copy(status = Option("paid"), next = None)
-                     update(n)
+                     update(id, n)
                      (OK, n)
                    } else {
                      (Conflict, s"order.status: ${porder.status}, order.cost: ${porder.cost}, payment.amount: ${payment.amount}")

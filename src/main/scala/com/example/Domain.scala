@@ -30,8 +30,7 @@ case class Link(rel: String, uri: String, `type`: String)  {
 case class Next(rel: String, uri: String, `type`: String)
 
 //todo Order should ideally be better typed          and that status should be something other than a string
-case class Order(id: Option[Int] = None,
-                 drink: String,
+case class Order(drink: String,
                  cost: Option[Double] = None,
                  next: Option[Next] = None,
                  status: Option[String] = Option("pending"))
