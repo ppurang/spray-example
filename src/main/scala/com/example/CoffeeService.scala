@@ -19,10 +19,19 @@ import directives.RouteDirectives._
 import MethodDirectives._
 import directives.CachingDirectives._
 import spray.routing.PathMatchers.IntNumber
+import com.typesafe.config.{ConfigFactory, Config}
+import com.example.domain.Messages.{HttpConfig, GetHttpConfig}
 
 // we don't implement our route structure directly in the service actor because
 // we want to be able to test it independently, without having to spin up an actor
-class CoffeeServiceActor extends Actor with Entry with CoffeeService with CoffeePaymentService with HashMapPersistenceCoffee with VeryPriceyCoffee {
+class CoffeePersistenceServiceActor extends Actor
+                                       with Entry
+                                       with CoffeeService
+                                       with CoffeePaymentService
+                                       with SlickH2CoffeePersistence
+                                       with VeryPriceyCoffee
+                                       with ConfigLinkBuilder
+                                       with DefultConfigProvider {
 
   // the HttpService trait defines only one abstract member, which
   // connects the services environment to the enclosing actor or test
@@ -31,34 +40,11 @@ class CoffeeServiceActor extends Actor with Entry with CoffeeService with Coffee
   // this actor only runs our route, but you could add
   // other things here, like request stream processing
   // or timeout handling
-  def receive = runRoute(entry ~ orderRoute ~ paymentRoute)
-}
-
-trait PersistenceCoffee {
-  def persist(order: Order): (Int, Order)
-
-  def update(counter: Int, porder: Order): Unit
-
-  def retrieve(id: Int): Option[Order]
-}
-
-trait HashMapPersistenceCoffee extends PersistenceCoffee {
-  private var map = collection.mutable.Map[Int, Order]()
-  private var counter = 0
-
-  def persist(order: Order) = {
-    counter = counter + 1
-    val porder = order.copy(next = Option(Next("payment", s"http://localhost:8080/payment/order/$counter", "application/vnd.coffee+json")))
-    map += (counter -> porder)
-    (counter, porder)
+  def receive = runRoute(entry ~ orderRoute ~ paymentRoute) orElse {
+    case GetHttpConfig =>
+      sender ! HttpConfig(
+        config getString "http.server.protocol", config getString "http.server.host", config getInt "http.server.port")
   }
-
-  def update(counter: Int, porder: Order) {
-    map -= counter
-    map += (counter -> porder)
-  }
-
-  def retrieve(id: Int) = map.get(id)
 }
 
 trait PriceCoffee {
@@ -97,12 +83,14 @@ object Directives {
 }
 
 trait Entry extends HttpService {
+  self: LinkBuilder =>
+
   val entry = path("") {
 //    alwaysCache(CacheSpecMagnet()) {
     allowed(GET) ~
     get {
         complete {
-          Link("order", "http://localhost:8080/order", "*/*,plain/text,application/json")
+          Link("order", createLink("order"), "*/*,plain/text,application/json")
         }
       }
 
@@ -110,9 +98,33 @@ trait Entry extends HttpService {
   }
 }
 
+trait LinkBuilder {
+  def createLink(parts: Any*): String
+}
+
+trait ConfigLinkBuilder extends LinkBuilder {
+  self: ConfigProvider =>
+
+  def createLink(parts: Any*) = {
+    val protocol = config getString "http.server.protocol"
+    val host = config getString "http.server.host"
+    val port = config getString "http.server.port"
+
+    protocol + "://" + host + ":" + port + "/" + (parts mkString "/")
+  }
+}
+
+trait ConfigProvider {
+  def config: Config
+}
+
+trait DefultConfigProvider extends ConfigProvider {
+  lazy val config = ConfigFactory.load()
+}
+
 // this trait defines our service behavior independently from the service actor
 trait CoffeeService extends HttpService with LiftJsonSupport {
-  self: PersistenceCoffee with PriceCoffee =>
+  self: CoffeePersistence with PriceCoffee with LinkBuilder =>
 
   override implicit def liftJsonFormats: Formats = Order.format
 
@@ -123,8 +135,8 @@ trait CoffeeService extends HttpService with LiftJsonSupport {
           post {
             entity(as[Order]) {
               order => complete {
-                val (counter, persistedOrder) = persist(price(order))
-                (Created, Location(s"http://localhost:8080/order/$counter") :: Nil, persistedOrder)
+                val (counter, persistedOrder) = persist(price(order), createLink("payment", "order", _))
+                (Created, Location(createLink("order", counter)) :: Nil, persistedOrder)
               }
             }
           }
@@ -150,12 +162,12 @@ trait CoffeeService extends HttpService with LiftJsonSupport {
 }
 
 trait CoffeePaymentService extends HttpService with LiftJsonSupport {
-  self: PersistenceCoffee =>
+  self: CoffeePersistence =>
 
   override implicit def liftJsonFormats: Formats = Order.format
 
   val paymentRoute =
-   pathPrefix("payment"/"order") {
+   pathPrefix("payment" / "order") {
      path(IntNumber) {
          id => allowed(GET, PUT) ~
            get {
@@ -170,7 +182,7 @@ trait CoffeePaymentService extends HttpService with LiftJsonSupport {
                  porder =>
                    if (porder.status != Option("paid") && Option(payment.amount) == porder.cost) {
                      //todo really?
-                     val n = porder.copy(status = Option("paid"))
+                     val n = porder.copy(status = Option("paid"), next = None)
                      update(id, n)
                      (OK, n)
                    } else {
@@ -182,5 +194,4 @@ trait CoffeePaymentService extends HttpService with LiftJsonSupport {
          }
        }
    }
-
 }
